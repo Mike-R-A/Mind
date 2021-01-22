@@ -14,21 +14,28 @@
         const ADD_NEW_PLANT = false;
         var canvas = document.getElementById("myCanvas");
         var context = canvas.getContext("2d");
-        $(document).ready(function () {
+        $(document).ready(async function () {
             var items = [];
             var plants = getPlantsInRandomPositions(NUMBER_OF_PLANTS);
             items = items.concat(plants);
-            var creature = new Creature(10, 10, 8, [], "creature1");
-            items.push(creature);
-            creature.createSensorClump().done(function () {
-                setInterval(function () {
-                    clearCanvas();
-                    items.forEach(p => p.draw());
+            var creature1 = new Creature(10, 10, 8, [{ id: "green", strength: 2 }], "creature1");
+            var creature2 = new Creature(500, 500, 8, [{ id: "blue", strength: 1 }], "creature2");
+            var creatures = [creature1, creature2];
+
+            items = items.concat(creatures);
+            for (var creature of creatures) {
+                await creature.createSensorClump();
+            }
+            setInterval(function () {
+                debugger;
+                clearCanvas();
+                console.log(items);
+                items.forEach(p => p.draw());
+                for (var creature of creatures) {
                     creature.timePeriodActions(items);
-                }, 25);
-            }).fail(function () {
-                console.log("FAILED createSensorClump")
-            });
+                }
+
+            }, 25);
         });
 
         function clearCanvas() {
@@ -76,13 +83,13 @@
         }
 
         class Creature extends Item {
-            constructor(x, y, radius, senseOutputs, sensorClumpId, desiredSenseId = "health", xVelocity = 1, yVelocity = 0) {
+            constructor(x, y, radius, senseOutputs, sensorClumpId, desiredSenseId = "health") {
                 super(x, y, radius, senseOutputs);
                 this.sensorClumpId = sensorClumpId;
                 this.desiredSenseId = desiredSenseId;
                 this.lastHealthAssociation = 0;
-                this.xVelocity = xVelocity;
-                this.yVelocity = yVelocity;
+                this.changeDirection();
+                this.type = "creature";
             }
 
             move(healthAssociation) {
@@ -137,7 +144,8 @@
             timePeriodActions(items) {
                 var senseInputs = [];
                 for (var item of items) {
-                    if (item != this) {
+                    if (item.type != this.type) {
+                        debugger;
                         var distanceBetween = distanceBetweenTwoItems(item, this);
                         for (var senseOutput of item.senseOutputs) {
                             var relevantSenseInput = senseInputs.filter(s => s.senseId == senseOutput.id)[0];
@@ -180,7 +188,10 @@
         }
 
         class Plant extends Item {
-
+            constructor(x, y, radius, senseOutputs, nutritionalValue = 1) {
+                super(x, y, radius, senseOutputs, nutritionalValue);
+                this.type = "plant";
+            }
         }
 
         class Detectable {
