@@ -23,7 +23,7 @@
                     creature.draw();
                     plants.forEach(p => p.draw());
                     creature.timePeriodActions(plants);
-                }, 50);
+                }, 25);
             }).fail(function () {
                 console.log("FAILED createSensorClump")
             });
@@ -53,7 +53,6 @@
         }
 
         function drawCircle(x, y, radius) {
-            
             context.beginPath();
             context.arc(x, y, radius, 0, 2 * Math.PI);
             context.stroke();
@@ -87,21 +86,25 @@
                 if (healthAssociation < this.lastHealthAssociation) {
                     this.changeDirection();
                 }
-                if (this.y + this.yVelocity < canvas.height) {
+                if (this.y + this.yVelocity > canvas.height ||
+                    this.y + this.yVelocity < 0 ||
+                    this.x + this.xVelocity > canvas.width ||
+                    this.x + this.xVelocity < 0) {
+                    this.changeDirection();
+                } else {
                     this.y += this.yVelocity;
-                }
-                if (this.x + this.xVelocity < canvas.width) {
                     this.x += this.xVelocity;
                 }
             }
 
             changeDirection() {
+                console.log("changeDirection");
                 var angle = this.getRandomAngle();
-                var xVelocity = getX(angle);
-                var yVelocity = getY(angle);
+                var xVelocity = this.getX(angle);
+                var yVelocity = this.getY(angle);
 
-                this.xVelocity(xVelocity);
-                this.yVelocity(yVelocity);
+                this.xVelocity = xVelocity;
+                this.yVelocity = yVelocity;
             }
 
             getRandomAngle() {
@@ -137,7 +140,7 @@
                         if (relevantSenseInput) {
                             relevantSenseInput.strength += senseOutput.strength;
                         } else {
-                            senseInputs.push({senseId: senseOutput.id, strength: senseOutput.strength })
+                            senseInputs.push({ senseId: senseOutput.id, strength: senseOutput.strength })
                         }
                     }
                 }
