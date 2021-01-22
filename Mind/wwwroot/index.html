@@ -1,0 +1,125 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <link rel="stylesheet" type="text/css" href="styles.css">
+    <meta charset="utf-8" />
+    <title></title>
+</head>
+<body>
+    <canvas id="myCanvas" width="600" height="600"></canvas>
+
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <script>
+        const width = 600;
+        const height = 600;
+        $(document).ready(function () {
+            var plants = [];
+
+            for (var i = 0; i < 10; i++) {
+                
+                var x = Math.random() * width;
+                var y = Math.random() * height;
+                var detectables = [
+                    {id:"red", strength:3}
+                ];
+
+                var plant = new Plant(x, y, 5, detectables);
+                plants.push(plant)
+            }
+
+            var creature = new Creature(10, 10, 8, [], "creature1");
+            creature.createSensorClump().done(function () {
+                debugger;
+                creature.detect(plants);
+            }).fail(function () {
+                console.log("FAIL")
+            });
+
+        });
+
+        function drawCircle(x, y, radius) {
+            var c = document.getElementById("myCanvas");
+            var ctx = c.getContext("2d");
+            ctx.beginPath();
+            ctx.arc(x, y, radius, 0, 2 * Math.PI);
+            ctx.stroke();
+        }
+
+        class Item {
+            constructor(x, y, radius, detectables) {
+                this.x = x;
+                this.y = y;
+                this.radius = radius;
+                this.detectables = detectables;
+                this.draw();
+            }
+
+            draw() {
+                drawCircle(this.x, this.y, this.radius)
+            }
+        }
+
+        class Creature extends Item {
+            constructor(x, y, radius, detectables, sensorClumpId) {
+                super(x, y, radius, detectables);
+                this.sensorClumpId = sensorClumpId;
+            }
+
+            createSensorClump() {
+                return $.ajax({
+                    url: `https://localhost:44360/mind/SensorClump/${this.sensorClumpId}`,
+                    type: "POST",
+                    data: JSON.stringify(["red", "green", "blue", "health", "damage"]),
+                    contentType: "application/json; charset=utf-8",
+                    dataType: "json",
+                    success: function (data) {
+                        console.log("SUCCESS");
+                    }
+                });
+            }
+
+            up(distance = 1) {
+                this.y -= distance;
+            }
+
+            down(distance = 1) {
+                this.y += distance;
+            }
+
+            left(distance = 1) {
+                this.x += distance;
+            }
+
+            right(distance = 1) {
+                this.x -= distance;
+            }
+
+            detect(items) {
+                for (var item of items) {
+                    console.log(item);
+                    for (var detectable of item.detectables) {
+                        fire(this.sensorClumpId, detectable.id, detectable.strength);
+                    }
+                }
+            }
+        }
+
+        class Plant extends Item {
+
+        }
+
+        class Detectable {
+            constructor(id, strength) {
+                this.id = id;
+                this.strength = strength;
+            }
+        }
+
+        function fire(sensorClumpId, sensorId, strength) {
+            var url = `https://localhost:44360/mind/fire/${sensorClumpId}/${sensorId}/${strength}`
+            $.post(url);
+        };
+
+    </script>
+</body>
+</html>

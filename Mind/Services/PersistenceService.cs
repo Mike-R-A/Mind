@@ -12,6 +12,10 @@ namespace Mind.Services
     }
     public class PersistenceService : IPersistenceService
     {
+        public PersistenceService()
+        {
+            SensorClumps = new List<SensorClump>();
+        }
         public List<SensorClump> SensorClumps { get; set; }
     }
 }

@@ -20,51 +20,18 @@ namespace Mind.Controllers
             this.persistenceService = persistenceService;
         }
 
-        [HttpGet]
-        public void Get()
+        [HttpPost("SensorClump/{sensorClumpId}")]
+        public JsonResult CreateSensorClump(string sensorClumpId, [FromBody] string[] senses)
         {
-            if(persistenceService.SensorClumps == null)
-            {
-                persistenceService.SensorClumps = new List<SensorClump>();
+            var sensors = senses.Select(s => new Sensor(s)).ToList();
 
-                var sensorsLeft = new List<Sensor>
-                {
-                    new Sensor("red"),
-                    new Sensor("green"),
-                    new Sensor("blue"),
-                    new Sensor("health"),
-                    new Sensor("damage"),
-                    new Sensor("open"),
-                    new Sensor("close")
-                };
+            persistenceService.SensorClumps.Add(new SensorClump(sensorClumpId, sensors));
 
-                var sensorsRight = new List<Sensor>
-                {
-                    new Sensor("red"),
-                    new Sensor("green"),
-                    new Sensor("blue"),
-                    new Sensor("health"),
-                    new Sensor("damage"),
-                    new Sensor("open"),
-                    new Sensor("close")
-                };
-
-                persistenceService.SensorClumps.Add(new SensorClump("left", sensorsLeft));
-                persistenceService.SensorClumps.Add(new SensorClump("right", sensorsRight));
-            }
+            return new JsonResult(true);
         }
 
-        [HttpPost("SensorClump")]
-        public void CreateSensorClump(string id, string senseIds)
-        {
-            var senseIdsArray = senseIds.Split(',');
-            var sensors = senseIdsArray.Select(sid => new Sensor(sid)).ToList();
-
-            persistenceService.SensorClumps.Add(new SensorClump(id, sensors));
-        }
-
-        [HttpGet("fire/{sensorClumpId}/{sensorId}")]
-        public void Fire(string sensorClumpId, string sensorId, [FromQuery] double strength = 1)
+        [HttpPost("fire/{sensorClumpId}/{sensorId}/{strength}")]
+        public void Fire(string sensorClumpId, string sensorId, double strength = 1)
         {
             var sensorClump = persistenceService.SensorClumps.Single(s => s.Id == sensorClumpId);
 
