@@ -10,38 +10,47 @@
 
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
     <script>
+        const NUMBER_OF_PLANTS = 50;
         var canvas = document.getElementById("myCanvas");
         var context = canvas.getContext("2d");
         $(document).ready(function () {
-            var plants = [];
-
-            for (var i = 0; i < 10; i++) {
-                
-                var x = Math.random() * canvas.width;
-                var y = Math.random() * canvas.height;
-                var senseOutputs = [
-                    {id:"red", strength:3}
-                ];
-
-                var plant = new Plant(x, y, 5, senseOutputs);
-                plants.push(plant)
-            }
+            var plants = getPlantsInRandomPositions(NUMBER_OF_PLANTS);
 
             var creature = new Creature(10, 10, 8, [], "creature1");
             creature.createSensorClump().done(function () {
-                debugger;
-
                 setInterval(function () {
-                    context.clearRect(0, 0, canvas.width, canvas.height);
+                    clearCanvas();
                     creature.draw();
                     plants.forEach(p => p.draw());
                     creature.timePeriodActions(plants);
                 }, 50);
             }).fail(function () {
-                console.log("FAIL")
+                console.log("FAILED createSensorClump")
             });
-
         });
+
+        function clearCanvas() {
+            context.clearRect(0, 0, canvas.width, canvas.height);
+        }
+
+        function getPlantsInRandomPositions(number) {
+            var plants = [];
+            for (var i = 0; i < number; i++) {
+                var plant = getPlantInRandomPosition();
+                plants.push(plant);
+            }
+            return plants;
+        }
+
+        function getPlantInRandomPosition() {
+            var x = Math.random() * canvas.width;
+            var y = Math.random() * canvas.height;
+            var senseOutputs = [
+                { id: "red", strength: 3 }
+            ];
+
+            return new Plant(x, y, 5, senseOutputs);
+        }
 
         function drawCircle(x, y, radius) {
             
