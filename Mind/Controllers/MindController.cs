@@ -37,5 +37,17 @@ namespace Mind.Controllers
 
             sensorClump.Sensors.Single(s => s.Id == sensorId).Fire(strength);
         }
+
+        [HttpPost("FireMultiple/{sensorClumpId}")]
+        public double FireMultiple(string sensorClumpId, [FromBody] List<SenseInput> senseInputs, [FromQuery] string desiredSenseId)
+        {
+            var sensorClump = persistenceService.SensorClumps.Single(s => s.Id == sensorClumpId);
+
+            senseInputs.ForEach(i => sensorClump.Sensors.Single(s => s.Id == i.SenseId).Fire(i.Strength));
+
+            var expected = sensorClump.GetExpected(senseInputs, desiredSenseId);
+
+            return expected;
+        }
     }
 }

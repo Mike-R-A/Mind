@@ -19,11 +19,11 @@
                 
                 var x = Math.random() * width;
                 var y = Math.random() * height;
-                var detectables = [
+                var senseOutputs = [
                     {id:"red", strength:3}
                 ];
 
-                var plant = new Plant(x, y, 5, detectables);
+                var plant = new Plant(x, y, 5, senseOutputs);
                 plants.push(plant)
             }
 
@@ -46,11 +46,11 @@
         }
 
         class Item {
-            constructor(x, y, radius, detectables) {
+            constructor(x, y, radius, senseOutputs) {
                 this.x = x;
                 this.y = y;
                 this.radius = radius;
-                this.detectables = detectables;
+                this.senseOutputs = senseOutputs;
                 this.draw();
             }
 
@@ -60,9 +60,46 @@
         }
 
         class Creature extends Item {
-            constructor(x, y, radius, detectables, sensorClumpId) {
-                super(x, y, radius, detectables);
+            constructor(x, y, radius, senseOutputs, sensorClumpId, desiredSenseId = "health", xVelocity = 1, yVelocity = 0) {
+                super(x, y, radius, senseOutputs);
                 this.sensorClumpId = sensorClumpId;
+                this.desiredSenseId = desiredSenseId;
+                this.lastHealthAssociation = 0;
+                this.xVelocity = xVelocity;
+                this.yVelocity = yVelocity;
+            }
+
+            move(healthAssociation) {
+                if (healthAssociation < this.lastHealthAssociation) {
+                    this.changeDirection();
+                }
+                if (this.y + this.yVelocity < height) {
+                    this.y += this.yVelocity;
+                }
+                if (this.x + this.xVelocity < width) {
+                    this.x += this.xVelocity;
+                }
+            }
+
+            changeDirection() {
+                var angle = this.getRandomAngle();
+                var xVelocity = getX(angle);
+                var yVelocity = getY(angle);
+
+                this.xVelocity(xVelocity);
+                this.yVelocity(yVelocity);
+            }
+
+            getRandomAngle() {
+                return Math.random() * 2 * Math.PI;
+            }
+
+            getX(angle, distance = 1) {
+                return distance * Math.cos(angle);
+            }
+
+            getY(angle, distance = 1) {
+                return distance * Math.sin(angle);
             }
 
             createSensorClump() {
@@ -78,29 +115,26 @@
                 });
             }
 
-            up(distance = 1) {
-                this.y -= distance;
-            }
-
-            down(distance = 1) {
-                this.y += distance;
-            }
-
-            left(distance = 1) {
-                this.x += distance;
-            }
-
-            right(distance = 1) {
-                this.x -= distance;
-            }
-
             detect(items) {
-                for (var item of items) {
-                    console.log(item);
-                    for (var detectable of item.detectables) {
-                        fire(this.sensorClumpId, detectable.id, detectable.strength);
+                console.log("detect");
+                setInterval(function () {
+                    var senseInputs = [];
+                    for (var item of items) {
+                        for (var senseOutput of item.senseOutputs) {
+                            var relevantSenseInput = senseInputs.filter(s => s.senseId = senseOutput.id)[0];
+                            if (relevantSenseInput) {
+                                relevantSenseInput.strength += senseOutput.strength;
+                            } else {
+                                senseInputs.push({senseId: senseOutput.id, strength: senseOutput.strength })
+                            }
+                        }
                     }
-                }
+                    fireMultiple(this.sensorClumpId, senseInputs, this.desiredSenseId).done(result => {
+                        this.move(result);
+                        this.lastHealthAssociation = result;
+                        this.draw();
+                    });
+                }.bind(this), 100);
             }
         }
 
@@ -118,6 +152,19 @@
         function fire(sensorClumpId, sensorId, strength) {
             var url = `https://localhost:44360/mind/fire/${sensorClumpId}/${sensorId}/${strength}`
             $.post(url);
+        };
+
+        function fireMultiple(sensorClumpId, senseInputs, desiredSenseId) {
+            return $.ajax({
+                url: `https://localhost:44360/mind/fireMultiple/${sensorClumpId}?desiredSenseId=${desiredSenseId}`,
+                type: "POST",
+                data: JSON.stringify(senseInputs),
+                contentType: "application/json; charset=utf-8",
+                dataType: "json",
+                success: function (data) {
+                    return data;
+                }
+            });
         };
 
     </script>

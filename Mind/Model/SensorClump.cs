@@ -10,6 +10,7 @@ namespace Mind.Model
         string Id { get; set; }
         List<Sensor> Sensors { get; set; }
         Dictionary<string, Sensor> SensorDictionary { get; }
+        double GetExpected(List<SenseInput> senseInputs, string desiredSenseId);
     }
     public class SensorClump : ISensorClump
     {
@@ -49,6 +50,20 @@ namespace Mind.Model
                     otherSensor.Connections.Add(connection);
                 }
             }
+        }
+
+        public double GetExpected(List<SenseInput> senseInputs, string desiredSenseId)
+        {
+            double totalAssociation = 0;
+
+            foreach (var senseInput in senseInputs)
+            {
+                var inputSensor = Sensors.Single(s => s.Id == senseInput.SenseId);
+                var associationToDesired = inputSensor.Connections.Single(c => c.SecondarySensor.Id == desiredSenseId).Association;
+                totalAssociation += associationToDesired;
+            }
+
+            return totalAssociation;
         }
     }
 }
