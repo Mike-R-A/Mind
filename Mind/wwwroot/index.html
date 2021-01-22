@@ -10,15 +10,15 @@
 
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
     <script>
-        const width = 600;
-        const height = 600;
+        var canvas = document.getElementById("myCanvas");
+        var context = canvas.getContext("2d");
         $(document).ready(function () {
             var plants = [];
 
             for (var i = 0; i < 10; i++) {
                 
-                var x = Math.random() * width;
-                var y = Math.random() * height;
+                var x = Math.random() * canvas.width;
+                var y = Math.random() * canvas.height;
                 var senseOutputs = [
                     {id:"red", strength:3}
                 ];
@@ -30,7 +30,13 @@
             var creature = new Creature(10, 10, 8, [], "creature1");
             creature.createSensorClump().done(function () {
                 debugger;
-                creature.detect(plants);
+
+                setInterval(function () {
+                    context.clearRect(0, 0, canvas.width, canvas.height);
+                    creature.draw();
+                    plants.forEach(p => p.draw());
+                    creature.timePeriodActions(plants);
+                }, 50);
             }).fail(function () {
                 console.log("FAIL")
             });
@@ -38,11 +44,10 @@
         });
 
         function drawCircle(x, y, radius) {
-            var c = document.getElementById("myCanvas");
-            var ctx = c.getContext("2d");
-            ctx.beginPath();
-            ctx.arc(x, y, radius, 0, 2 * Math.PI);
-            ctx.stroke();
+            
+            context.beginPath();
+            context.arc(x, y, radius, 0, 2 * Math.PI);
+            context.stroke();
         }
 
         class Item {
@@ -73,10 +78,10 @@
                 if (healthAssociation < this.lastHealthAssociation) {
                     this.changeDirection();
                 }
-                if (this.y + this.yVelocity < height) {
+                if (this.y + this.yVelocity < canvas.height) {
                     this.y += this.yVelocity;
                 }
-                if (this.x + this.xVelocity < width) {
+                if (this.x + this.xVelocity < canvas.width) {
                     this.x += this.xVelocity;
                 }
             }
@@ -115,26 +120,22 @@
                 });
             }
 
-            detect(items) {
-                console.log("detect");
-                setInterval(function () {
-                    var senseInputs = [];
-                    for (var item of items) {
-                        for (var senseOutput of item.senseOutputs) {
-                            var relevantSenseInput = senseInputs.filter(s => s.senseId = senseOutput.id)[0];
-                            if (relevantSenseInput) {
-                                relevantSenseInput.strength += senseOutput.strength;
-                            } else {
-                                senseInputs.push({senseId: senseOutput.id, strength: senseOutput.strength })
-                            }
+            timePeriodActions(items) {
+                var senseInputs = [];
+                for (var item of items) {
+                    for (var senseOutput of item.senseOutputs) {
+                        var relevantSenseInput = senseInputs.filter(s => s.senseId = senseOutput.id)[0];
+                        if (relevantSenseInput) {
+                            relevantSenseInput.strength += senseOutput.strength;
+                        } else {
+                            senseInputs.push({senseId: senseOutput.id, strength: senseOutput.strength })
                         }
                     }
-                    fireMultiple(this.sensorClumpId, senseInputs, this.desiredSenseId).done(result => {
-                        this.move(result);
-                        this.lastHealthAssociation = result;
-                        this.draw();
-                    });
-                }.bind(this), 100);
+                }
+                fireMultiple(this.sensorClumpId, senseInputs, this.desiredSenseId).done(result => {
+                    this.move(result);
+                    this.lastHealthAssociation = result;
+                });
             }
         }
 
