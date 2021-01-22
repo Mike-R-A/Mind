@@ -11,18 +11,20 @@
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
     <script>
         const NUMBER_OF_PLANTS = 50;
+        const ADD_NEW_PLANT = false;
         var canvas = document.getElementById("myCanvas");
         var context = canvas.getContext("2d");
         $(document).ready(function () {
+            var items = [];
             var plants = getPlantsInRandomPositions(NUMBER_OF_PLANTS);
-
+            items = items.concat(plants);
             var creature = new Creature(10, 10, 8, [], "creature1");
+            items.push(creature);
             creature.createSensorClump().done(function () {
                 setInterval(function () {
                     clearCanvas();
-                    creature.draw();
-                    plants.forEach(p => p.draw());
-                    creature.timePeriodActions(plants);
+                    items.forEach(p => p.draw());
+                    creature.timePeriodActions(items);
                 }, 25);
             }).fail(function () {
                 console.log("FAILED createSensorClump")
@@ -135,23 +137,29 @@
             timePeriodActions(items) {
                 var senseInputs = [];
                 for (var item of items) {
-                    var distanceBetween = distanceBetweenTwoItems(item, this);                   
-                    for (var senseOutput of item.senseOutputs) {
-                        var relevantSenseInput = senseInputs.filter(s => s.senseId == senseOutput.id)[0];
-                        if (relevantSenseInput) {
-                            relevantSenseInput.strength += senseOutput.strength / Math.pow(distanceBetween, 2);
-                        } else {
-                            senseInputs.push({ senseId: senseOutput.id, strength: senseOutput.strength })
+                    if (item != this) {
+                        var distanceBetween = distanceBetweenTwoItems(item, this);
+                        for (var senseOutput of item.senseOutputs) {
+                            var relevantSenseInput = senseInputs.filter(s => s.senseId == senseOutput.id)[0];
+                            if (relevantSenseInput) {
+                                relevantSenseInput.strength += senseOutput.strength / Math.pow(distanceBetween, 2);
+                            } else {
+                                senseInputs.push({ senseId: senseOutput.id, strength: senseOutput.strength })
+                            }
                         }
-                    }
-                    if (distanceBetween <= item.radius + this.radius) {
-                        console.log("INSIDE");
-                        const index = items.indexOf(item);
-                        var newPlant = getPlantInRandomPosition();
-                        var eatInput = { senseId: this.desiredSenseId, strength: item.nutritionalValue };
-                        console.log(eatInput);
-                        senseInputs.push(eatInput);
-                        items.splice(index, 1, newPlant);
+                        if (distanceBetween <= item.radius + this.radius) {
+                            console.log("INSIDE");
+                            const index = items.indexOf(item);
+                            var eatInput = { senseId: this.desiredSenseId, strength: item.nutritionalValue };
+                            console.log(eatInput);
+                            senseInputs.push(eatInput);
+                            if (ADD_NEW_PLANT) {
+                                var newPlant = getPlantInRandomPosition();
+                                items.splice(index, 1, newPlant);
+                            } else {
+                                items.splice(index, 1);
+                            }
+                        }
                     }
                 }
                 fireMultiple(this.sensorClumpId, senseInputs, this.desiredSenseId).done(result => {
