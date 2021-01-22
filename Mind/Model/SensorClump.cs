@@ -56,14 +56,21 @@ namespace Mind.Model
         {
             double totalAssociation = 0;
 
-            foreach (var senseInput in senseInputs)
+            foreach (var senseInput in senseInputs.Where(s => s.SenseId != desiredSenseId))
             {
                 var inputSensor = Sensors.Single(s => s.Id == senseInput.SenseId);
-                var associationToDesired = inputSensor.Connections.Single(c => c.SecondarySensor.Id == desiredSenseId).Association;
-                totalAssociation += associationToDesired;
+                var associationToDesired = inputSensor.Connections.Single(c => c.PrimarySensor.Id == inputSensor.Id && c.SecondarySensor.Id == desiredSenseId).Association;
+                totalAssociation += associationToDesired * senseInput.Strength;
             }
 
-            return totalAssociation;
+            var desiredSenseInput = senseInputs.SingleOrDefault(s => s.SenseId == desiredSenseId);
+            double selfAssociationFactor = 0;
+            if(desiredSenseInput != null)
+            {
+                selfAssociationFactor = Sensors.Single(s => s.Id == desiredSenseId).SelfAssociation * senseInputs.Single(s => s.SenseId == desiredSenseId).Strength;
+            }
+
+            return totalAssociation + selfAssociationFactor;
         }
     }
 }

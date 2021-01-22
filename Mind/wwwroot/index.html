@@ -59,12 +59,13 @@
         }
 
         class Item {
-            constructor(x, y, radius, senseOutputs) {
+            constructor(x, y, radius, senseOutputs, nutritionalValue = 1) {
                 this.x = x;
                 this.y = y;
                 this.radius = radius;
                 this.senseOutputs = senseOutputs;
                 this.draw();
+                this.nutritionalValue = nutritionalValue;
             }
 
             draw() {
@@ -98,7 +99,6 @@
             }
 
             changeDirection() {
-                console.log("changeDirection");
                 var angle = this.getRandomAngle();
                 var xVelocity = this.getX(angle);
                 var yVelocity = this.getY(angle);
@@ -135,20 +135,40 @@
             timePeriodActions(items) {
                 var senseInputs = [];
                 for (var item of items) {
+                    var distanceBetween = distanceBetweenTwoItems(item, this);                   
                     for (var senseOutput of item.senseOutputs) {
-                        var relevantSenseInput = senseInputs.filter(s => s.senseId = senseOutput.id)[0];
+                        var relevantSenseInput = senseInputs.filter(s => s.senseId == senseOutput.id)[0];
                         if (relevantSenseInput) {
-                            relevantSenseInput.strength += senseOutput.strength;
+                            relevantSenseInput.strength += senseOutput.strength / Math.pow(distanceBetween, 2);
                         } else {
                             senseInputs.push({ senseId: senseOutput.id, strength: senseOutput.strength })
                         }
                     }
+                    if (distanceBetween <= item.radius + this.radius) {
+                        console.log("INSIDE");
+                        const index = items.indexOf(item);
+                        var newPlant = getPlantInRandomPosition();
+                        var eatInput = { senseId: this.desiredSenseId, strength: item.nutritionalValue };
+                        console.log(eatInput);
+                        senseInputs.push(eatInput);
+                        items.splice(index, 1, newPlant);
+                    }
                 }
                 fireMultiple(this.sensorClumpId, senseInputs, this.desiredSenseId).done(result => {
+                    console.log(senseInputs);
                     this.move(result);
                     this.lastHealthAssociation = result;
                 });
             }
+        }
+
+        function distanceBetweenTwoItems(item1, item2) {
+            return distanceBetweenTwoPoints(item1.x, item1.y, item2.x, item2.y);
+        }
+
+        function distanceBetweenTwoPoints(x1, y1, x2, y2) {
+            var distance = Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2));
+            return distance;
         }
 
         class Plant extends Item {
