@@ -10,17 +10,18 @@
 
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
     <script>
-        const NUMBER_OF_PLANTS = 50;
-        const ADD_NEW_PLANT = false;
+        const NUMBER_OF_HEALTHY_PLANTS = 25;
+        const NUMBER_OF_POISONOUS_PLANTS = 25;
         var canvas = document.getElementById("myCanvas");
         var context = canvas.getContext("2d");
         $(document).ready(async function () {
             var items = [];
-            var plants = getPlantsInRandomPositions(NUMBER_OF_PLANTS);
-            items = items.concat(plants);
+            var plants = getPlantsInRandomPositions(NUMBER_OF_HEALTHY_PLANTS, 1, 0, [{ id: "green", strength: 3 }], "green");
+            var poisonPlants = getPlantsInRandomPositions(NUMBER_OF_POISONOUS_PLANTS, 0, 1, [{ id: "red", strength: 3 }], "red");
+            items = items.concat(plants).concat(poisonPlants);
             var creature1 = new Creature(10, 10, 8, [{ id: "green", strength: 2 }], "creature1");
-            var creature2 = new Creature(500, 500, 8, [{ id: "blue", strength: 1 }], "creature2");
-            var creatures = [creature1, creature2];
+            //var creature2 = new Creature(500, 500, 8, [{ id: "blue", strength: 1 }], "creature2");
+            var creatures = [creature1];
 
             items = items.concat(creatures);
             for (var creature of creatures) {
@@ -42,51 +43,53 @@
             context.clearRect(0, 0, canvas.width, canvas.height);
         }
 
-        function getPlantsInRandomPositions(number) {
+        function getPlantsInRandomPositions(number, nutritionalValue, poisonValue, senseOutputs, colour) {
             var plants = [];
             for (var i = 0; i < number; i++) {
-                var plant = getPlantInRandomPosition();
+                var plant = getPlantInRandomPosition(nutritionalValue, poisonValue, senseOutputs, colour);
                 plants.push(plant);
             }
             return plants;
         }
 
-        function getPlantInRandomPosition() {
+        function getPlantInRandomPosition(nutritionalValue, poisonValue, senseOutputs, colour) {
             var x = Math.random() * canvas.width;
             var y = Math.random() * canvas.height;
-            var senseOutputs = [
-                { id: "red", strength: 3 }
-            ];
 
-            return new Plant(x, y, 5, senseOutputs);
+            return new Plant(x, y, 5, senseOutputs, nutritionalValue, poisonValue, colour);
         }
 
-        function drawCircle(x, y, radius) {
+        function drawCircle(x, y, radius, colour) {
             context.beginPath();
             context.arc(x, y, radius, 0, 2 * Math.PI);
             context.stroke();
+            context.fillStyle = colour;
+            context.fill();
         }
 
         class Item {
-            constructor(x, y, radius, senseOutputs, nutritionalValue = 1) {
+            constructor(x, y, radius, senseOutputs, nutritionalValue = 1, poison = 0, colour = "pink") {
                 this.x = x;
                 this.y = y;
                 this.radius = radius;
                 this.senseOutputs = senseOutputs;
                 this.draw();
                 this.nutritionalValue = nutritionalValue;
+                this.poison = poison;
+                this.colour = colour;
             }
 
             draw() {
-                drawCircle(this.x, this.y, this.radius)
+                drawCircle(this.x, this.y, this.radius, this.colour)
             }
         }
 
         class Creature extends Item {
-            constructor(x, y, radius, senseOutputs, sensorClumpId, desiredSenseId = "health") {
-                super(x, y, radius, senseOutputs);
+            constructor(x, y, radius, senseOutputs, sensorClumpId, desiredSenseId = "health", avoidSenseId = "damage") {
+                super(x, y, radius, senseOutputs, 1, 0, "purple");
                 this.sensorClumpId = sensorClumpId;
                 this.desiredSenseId = desiredSenseId;
+                this.avoidSenseId = avoidSenseId;
                 this.lastHealthAssociation = 0;
                 this.changeDirection();
                 this.type = "creature";
@@ -145,32 +148,31 @@
                 var senseInputs = [];
                 for (var item of items) {
                     if (item.type != this.type) {
-                        debugger;
                         var distanceBetween = distanceBetweenTwoItems(item, this);
                         for (var senseOutput of item.senseOutputs) {
                             var relevantSenseInput = senseInputs.filter(s => s.senseId == senseOutput.id)[0];
+                            var senseStrength = senseOutput.strength / Math.pow(distanceBetween, 2)
                             if (relevantSenseInput) {
-                                relevantSenseInput.strength += senseOutput.strength / Math.pow(distanceBetween, 2);
+                                relevantSenseInput.strength += senseStrength;
                             } else {
-                                senseInputs.push({ senseId: senseOutput.id, strength: senseOutput.strength })
+                                senseInputs.push({ senseId: senseOutput.id, strength: senseStrength })
                             }
                         }
                         if (distanceBetween <= item.radius + this.radius) {
-                            console.log("INSIDE");
                             const index = items.indexOf(item);
-                            var eatInput = { senseId: this.desiredSenseId, strength: item.nutritionalValue };
-                            console.log(eatInput);
-                            senseInputs.push(eatInput);
-                            if (ADD_NEW_PLANT) {
-                                var newPlant = getPlantInRandomPosition();
-                                items.splice(index, 1, newPlant);
-                            } else {
-                                items.splice(index, 1);
+                            if (item.nutritionalValue > 0) {
+                                var eatHealthyInput = { senseId: this.desiredSenseId, strength: item.nutritionalValue };
+                                senseInputs.push(eatHealthyInput);
                             }
+                            if (item.poison > 0) {
+                                var eatPoisonInput = { senseId: this.avoidSenseId, strength: item.poison };
+                                senseInputs.push(eatPoisonInput);
+                            }
+                            items.splice(index, 1);
                         }
                     }
                 }
-                fireMultiple(this.sensorClumpId, senseInputs, this.desiredSenseId).done(result => {
+                fireMultiple(this.sensorClumpId, senseInputs, this.desiredSenseId, this.avoidSenseId).done(result => {
                     console.log(senseInputs);
                     this.move(result);
                     this.lastHealthAssociation = result;
@@ -188,8 +190,8 @@
         }
 
         class Plant extends Item {
-            constructor(x, y, radius, senseOutputs, nutritionalValue = 1) {
-                super(x, y, radius, senseOutputs, nutritionalValue);
+            constructor(x, y, radius, senseOutputs, nutritionalValue = 1, poisonValue = 0, colour = "green") {
+                super(x, y, radius, senseOutputs, nutritionalValue, poisonValue, colour);
                 this.type = "plant";
             }
         }
@@ -206,9 +208,9 @@
             $.post(url);
         };
 
-        function fireMultiple(sensorClumpId, senseInputs, desiredSenseId) {
+        function fireMultiple(sensorClumpId, senseInputs, desiredSenseId, avoidSenseId) {
             return $.ajax({
-                url: `https://localhost:44360/mind/fireMultiple/${sensorClumpId}?desiredSenseId=${desiredSenseId}`,
+                url: `https://localhost:44360/mind/fireMultiple/${sensorClumpId}?desiredSenseId=${desiredSenseId}&avoidSenseId=${avoidSenseId}`,
                 type: "POST",
                 data: JSON.stringify(senseInputs),
                 contentType: "application/json; charset=utf-8",
