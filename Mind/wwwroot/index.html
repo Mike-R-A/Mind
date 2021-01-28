@@ -19,9 +19,9 @@
             var plants = getPlantsInRandomPositions(NUMBER_OF_HEALTHY_PLANTS, 1, 0, [{ id: "green", strength: 3 }], "green");
             var poisonPlants = getPlantsInRandomPositions(NUMBER_OF_POISONOUS_PLANTS, 0, 1, [{ id: "red", strength: 3 }], "red");
             items = items.concat(plants).concat(poisonPlants);
-            var creature1 = new Creature(10, 10, 8, [{ id: "blue", strength: 2 }], "creature1");
-            //var creature2 = new Creature(500, 500, 8, [{ id: "blue", strength: 1 }], "creature2");
-            var creatures = [creature1];
+            //var creature1 = new Creature(10, 10, 8, [{ id: "blue", strength: 2 }], "creature1", "health", "damage", 2, "orange");
+            var creature2 = new Creature(500, 500, 8, [{ id: "blue", strength: 2 }], "creature2", "health", "damage", 1);
+            var creatures = [creature2];
 
             items = items.concat(creatures);
             for (var creature of creatures) {
@@ -84,15 +84,23 @@
             }
         }
 
-        class Creature extends Item {
-            constructor(x, y, radius, senseOutputs, sensorClumpId, desiredSenseId = "health", avoidSenseId = "damage") {
-                super(x, y, radius, senseOutputs, 1, 0, "purple");
+        class LivingThing extends Item {
+            constructor(x, y, radius, senseOutputs, nutritionalValue = 1, poison = 0, colour = "pink", foodChainHeight = 0) {
+                super(x, y, radius, senseOutputs, nutritionalValue, poison, colour);
+                this.foodChainHeight = foodChainHeight;
+            }
+        }
+
+        class Creature extends LivingThing {
+            constructor(x, y, radius, senseOutputs, sensorClumpId, desiredSenseId = "health", avoidSenseId = "damage", foodChainHeight = 0, colour = "purple") {
+                super(x, y, radius, senseOutputs, 1, 0, colour);
                 this.sensorClumpId = sensorClumpId;
                 this.desiredSenseId = desiredSenseId;
                 this.avoidSenseId = avoidSenseId;
                 this.lastHealthAssociation = 0;
                 this.changeDirection();
                 this.type = "creature";
+                this.foodChainHeight = foodChainHeight;
             }
 
             move(healthAssociation) {
@@ -104,10 +112,9 @@
                     this.x + this.xVelocity > canvas.width ||
                     this.x + this.xVelocity < 0) {
                     this.changeDirection();
-                } else {
-                    this.y += this.yVelocity;
-                    this.x += this.xVelocity;
                 }
+                this.y += this.yVelocity;
+                this.x += this.xVelocity;
             }
 
             changeDirection() {
@@ -147,11 +154,11 @@
             timePeriodActions(items) {
                 var senseInputs = [];
                 for (var item of items) {
-                    if (item.type != this.type) {
+                    if (item != this) {
                         var distanceBetween = distanceBetweenTwoItems(item, this);
                         for (var senseOutput of item.senseOutputs) {
                             var relevantSenseInput = senseInputs.filter(s => s.senseId == senseOutput.id)[0];
-                            var senseStrength = senseOutput.strength / Math.pow(distanceBetween, 2)
+                            var senseStrength = senseOutput.strength / (Math.pow(distanceBetween, 2) + 1)
                             if (relevantSenseInput) {
                                 relevantSenseInput.strength += senseStrength;
                             } else {
@@ -160,15 +167,17 @@
                         }
                         if (distanceBetween <= item.radius + this.radius) {
                             const index = items.indexOf(item);
-                            if (item.nutritionalValue > 0) {
-                                var eatHealthyInput = { senseId: this.desiredSenseId, strength: item.nutritionalValue };
-                                senseInputs.push(eatHealthyInput);
+                            if (item.foodChainHeight < this.foodChainHeight) {
+                                if (item.nutritionalValue > 0) {
+                                    var eatHealthyInput = { senseId: this.desiredSenseId, strength: item.nutritionalValue };
+                                    senseInputs.push(eatHealthyInput);
+                                }
+                                if (item.poison > 0) {
+                                    var eatPoisonInput = { senseId: this.avoidSenseId, strength: item.poison };
+                                    senseInputs.push(eatPoisonInput);
+                                }
+                                items.splice(index, 1);
                             }
-                            if (item.poison > 0) {
-                                var eatPoisonInput = { senseId: this.avoidSenseId, strength: item.poison };
-                                senseInputs.push(eatPoisonInput);
-                            }
-                            items.splice(index, 1);
                         }
                     }
                 }
@@ -189,7 +198,7 @@
             return distance;
         }
 
-        class Plant extends Item {
+        class Plant extends LivingThing {
             constructor(x, y, radius, senseOutputs, nutritionalValue = 1, poisonValue = 0, colour = "green") {
                 super(x, y, radius, senseOutputs, nutritionalValue, poisonValue, colour);
                 this.type = "plant";
