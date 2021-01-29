@@ -6,7 +6,7 @@
     <title></title>
 </head>
 <body>
-    <canvas id="myCanvas" width="800" height="800"></canvas>
+    <canvas id="myCanvas" width="1500" height="800"></canvas>
 
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
     <script>
@@ -26,19 +26,16 @@
                 var newPlant = new Plant(clickPosition.x, clickPosition.y, 5, [{ id: "green", strength: 3 }], 1, 0, "green");
                 items.push(newPlant);
             });
-            for (var i = 0; i < 5; i++) {
-                var newPlants = getPlantsInRandomPositions(10, 1, 0, [{ id: "green", strength: 3 }], "green");
-                items = items.concat(newPlants);
-            }
 
-            var poisonPlants = getPlantsInRandomPositions(5, 0, 1, [{ id: "red", strength: 3 }], "red");
-            var predators = getCreaturesInRandomPositions(NUMBER_OF_PREDATORS, 1, [{ id: PREDATOR_SENSE_ID, strength: 2 }], "orange", 2, "predator");
-            var prey = getCreaturesInRandomPositions(NUMBER_OF_PREY, 50, [{ id: PREY_SENSE_ID, strength: 5 }], "black", 1, "prey");
-            var creatures = predators.concat(prey);
-            items = items.concat(poisonPlants).concat(creatures);
+            debugger;
 
 
-            items = items.concat(creatures);
+            items = addPrey(items);
+            items = addPredators(items);
+
+            console.log("ITEMS",items);
+
+            var creatures = items.filter(i => i.type == "creature");
             for (var creature of creatures) {
                 await creature.createSensorClump();
             }
@@ -46,6 +43,7 @@
                 var listToFire = [];
                 clearCanvas();
                 items.forEach(p => p.draw());
+                var creatures = items.filter(i => i.type == "creature");
                 for (var creature of creatures) {
                     creature.timePeriodActions(items);
                 }
@@ -70,7 +68,47 @@
                     }
                 });
             }, 25);
+
+            setInterval(function () {
+                items = addNicePlants(items);
+            }, 10000);
+
+            setInterval(function () {
+                items = addPoisonPlants(items);
+            }, 62000);
         });
+
+        function addNicePlants(items) {
+            var random = Math.round(randomNumberBetween(1, 10));
+            var nicePlants = getGroupsOfPlants(1, random, 1, 0, [{ id: "green", strength: 3 }], "green");
+            return items.concat(nicePlants);
+        }
+
+        function addPoisonPlants(items) {
+            var random = Math.round(randomNumberBetween(1, 3));
+            var poisonPlants = getGroupsOfPlants(1, random, 0, 1, [{ id: "red", strength: 3 }], "red");
+            return items.concat(poisonPlants);
+        }
+
+        function addPrey(items) {
+            var prey = getCreaturesInRandomPositions(NUMBER_OF_PREY, 50, [{ id: PREY_SENSE_ID, strength: 5 }], "black", 1, "prey");
+            return items.concat(prey);
+        }
+
+        function addPredators(items) {
+            var predators = getCreaturesInRandomPositions(NUMBER_OF_PREDATORS, 1, [{ id: PREDATOR_SENSE_ID, strength: 2 }], "orange", 2, "predator");
+            return items.concat(predators);
+        }
+
+        function getGroupsOfPlants(numberOfGroups, numberInEachGroup, nutritionalValue, poisonValue, senseOutputs, colour) {
+            var plants = [];
+            for (var i = 0; i < numberOfGroups; i++) {
+                var newPlants = getPlantsInRandomPositions(numberInEachGroup, nutritionalValue, poisonValue, senseOutputs, colour);
+                plants = plants.concat(newPlants);
+            }
+
+            return plants;
+        }
 
         function getCursorPosition(canvas, event) {
             const rect = canvas.getBoundingClientRect()
@@ -146,6 +184,22 @@
             draw() {
                 drawCircle(this.x, this.y, this.radius, this.colour)
             }
+
+            get distanceFromLeftWall() {
+                return this.x;
+            }
+
+            get distanceFromRightWall() {
+                return canvas.width - this.x;
+            }
+
+            get distanceFromTopWall() {
+                return this.y;
+            }
+
+            get distanceFromBottomWall() {
+                return canvas.height - this.y;
+            }
         }
 
         class LivingThing extends Item {
@@ -188,7 +242,7 @@
                 this.setNewVelocity();
             }
 
-            setNewVelocity(speed = 1) {
+            setNewVelocity(speed = 2) {
                 var angle = this.getRandomAngle();
                 var randomDistance = Math.round(Math.random()) * speed;
                 var xVelocity = this.getX(angle, randomDistance);
@@ -231,6 +285,14 @@
                 }
             }
 
+            addWallSenseInputs() {
+                var wallSmellStrength = 0.01;
+                this.addSenseInput(WALL_SENSE_ID, wallSmellStrength / Math.pow(this.distanceFromLeftWall, 2));
+                this.addSenseInput(WALL_SENSE_ID, wallSmellStrength / Math.pow(this.distanceFromRightWall, 2));
+                this.addSenseInput(WALL_SENSE_ID, wallSmellStrength / Math.pow(this.distanceFromTopWall, 2));
+                this.addSenseInput(WALL_SENSE_ID, wallSmellStrength / Math.pow(this.distanceFromBottomWall, 2));
+            }
+
             timePeriodActions(items) {
                 for (var item of items) {
                     if (item != this) {
@@ -244,32 +306,31 @@
                             if (item.foodChainHeight < this.foodChainHeight) {
                                 if (item.nutritionalValue > 0) {
                                     this.addSenseInput(this.desiredSenseId, item.nutritionalValue);
+                                    this.health += item.nutritionalValue;
                                 }
                                 if (item.poison > 0) {
                                     this.addSenseInput(this.avoidSenseId, item.poison);
+                                    this.health -= item.poison;
                                 }
                                 if (item.type == "plant") {
                                     items.splice(index, 1);
                                 } else if (item.addSenseInput) {
                                     item.addSenseInput(item.avoidSenseId, 1);
-                                    item.health = item.health - 1;
-                                    console.log(item.health);
+                                    var gettingBittenHealthDecrease = 1;
+                                    item.health = item.health - gettingBittenHealthDecrease;
                                     if (item.health <= 0) {
                                         items.splice(index, 1);
                                     }
                                 }
                             }
+                            if (item.type == this.type) {
+                                this.addSenseInput(this.avoidSenseId, 1);
+                            }
                         }
                     }
                 }
-                var distanceFromLeftWall = this.x;
-                var distanceFromRightWall = canvas.width - this.x;
-                var distanceFromTop = this.y;
-                var distanceFromBottom = canvas.height - this.y;
-                this.addSenseInput(WALL_SENSE_ID, 0.01 / Math.pow(distanceFromLeftWall, 2));
-                this.addSenseInput(WALL_SENSE_ID, 0.01 / Math.pow(distanceFromRightWall, 2));
-                this.addSenseInput(WALL_SENSE_ID, 0.01 / Math.pow(distanceFromTop, 2));
-                this.addSenseInput(WALL_SENSE_ID, 0.01 / Math.pow(distanceFromBottom, 2));
+
+                this.addWallSenseInputs();
             }
         }
 
@@ -313,6 +374,14 @@
                 }
             });
         };
+
+        function getRadius(area) {
+            return Math.sqrt(area / Math.PI);
+        }
+
+        function getArea(radius) {
+            return Math.PI * Math.pow(radius, 2);
+        }
 
         function fireList(listToFire) {
             return $.ajax({
