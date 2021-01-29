@@ -162,7 +162,8 @@
                 this.desiredSenseId = desiredSenseId;
                 this.avoidSenseId = avoidSenseId;
                 this.lastHealthAssociation = 0;
-                this.changeDirection();
+                this.health = 100;
+                this.setNewVelocity();
                 this.type = "creature";
                 this.foodChainHeight = foodChainHeight;
                 this.senseInputs = [];
@@ -184,8 +185,12 @@
             }
 
             changeDirection() {
+                this.setNewVelocity();
+            }
+
+            setNewVelocity(speed = 1) {
                 var angle = this.getRandomAngle();
-                var randomDistance = Math.round(Math.random());
+                var randomDistance = Math.round(Math.random()) * speed;
                 var xVelocity = this.getX(angle, randomDistance);
                 var yVelocity = this.getY(angle, randomDistance);
 
@@ -247,6 +252,11 @@
                                     items.splice(index, 1);
                                 } else if (item.addSenseInput) {
                                     item.addSenseInput(item.avoidSenseId, 1);
+                                    item.health = item.health - 1;
+                                    console.log(item.health);
+                                    if (item.health <= 0) {
+                                        items.splice(index, 1);
+                                    }
                                 }
                             }
                         }
