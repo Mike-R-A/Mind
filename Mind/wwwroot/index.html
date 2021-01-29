@@ -28,14 +28,29 @@
                 await creature.createSensorClump();
             }
             setInterval(function () {
+                var listToFire = [];
                 clearCanvas();
                 console.log(items);
                 items.forEach(p => p.draw());
                 for (var creature of creatures) {
-                    creature.timePeriodActions(items);
+                    var detailsToFire = creature.timePeriodActions(items);
+                    listToFire.push(detailsToFire);
                 }
+                fireList(listToFire).done(result => {
+                    for (var item of items) {
+                        if (item.sensorClumpId) {
+                            var itemResult = result[item.sensorClumpId];
+                            console.log(itemResult, result);
+                            if (itemResult != null && itemResult != undefined) {
+                                console.log("in the firelist");
+                                item.move(itemResult);
+                                item.lastHealthAssociation = itemResult;
+                            }
+                        }
+                    }
+                });
 
-            }, 100);
+            }, 25);
         });
 
         function clearCanvas() {
@@ -180,11 +195,13 @@
                         }
                     }
                 }
-                fireMultiple(this.sensorClumpId, senseInputs, this.desiredSenseId, this.avoidSenseId).done(result => {
-                    console.log(senseInputs);
-                    this.move(result);
-                    this.lastHealthAssociation = result;
-                });
+                return {
+                    sensorClumpId: this.sensorClumpId,
+                    senseInputs: senseInputs,
+                    desiredSenseId: this.desiredSenseId,
+                    avoidSenseId: this.avoidSenseId
+                };
+
             }
         }
 
@@ -221,6 +238,19 @@
                 url: `https://localhost:44360/mind/fireMultiple/${sensorClumpId}?desiredSenseId=${desiredSenseId}&avoidSenseId=${avoidSenseId}`,
                 type: "POST",
                 data: JSON.stringify(senseInputs),
+                contentType: "application/json; charset=utf-8",
+                dataType: "json",
+                success: function (data) {
+                    return data;
+                }
+            });
+        };
+
+        function fireList(listToFire) {
+            return $.ajax({
+                url: `https://localhost:44360/mind/fireList`,
+                type: "POST",
+                data: JSON.stringify(listToFire),
                 contentType: "application/json; charset=utf-8",
                 dataType: "json",
                 success: function (data) {

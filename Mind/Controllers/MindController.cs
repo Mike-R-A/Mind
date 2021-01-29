@@ -49,5 +49,19 @@ namespace Mind.Controllers
 
             return expected;
         }
+
+        [HttpPost("FireList")]
+        public JsonResult FireList([FromBody] List<FireInput> fireInputs)
+        {
+            var expectedDictionary = new Dictionary<string, double>();
+            foreach (var fireInput in fireInputs)
+            {
+                var expected = FireMultiple(fireInput.SensorClumpId, fireInput.SenseInputs, fireInput.DesiredSenseId, fireInput.AvoidSenseId);
+
+                expectedDictionary.Add(fireInput.SensorClumpId, expected);  
+            }
+
+            return new JsonResult(expectedDictionary);
+        }
     }
 }
