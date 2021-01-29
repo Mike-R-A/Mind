@@ -6,7 +6,7 @@
     <title></title>
 </head>
 <body>
-    <canvas id="myCanvas" width="1000" height="1000"></canvas>
+    <canvas id="myCanvas" width="800" height="800"></canvas>
 
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
     <script>
@@ -21,12 +21,21 @@
         var context = canvas.getContext("2d");
         $(document).ready(async function () {
             var items = [];
-            var plants = getPlantsInRandomPositions(NUMBER_OF_HEALTHY_PLANTS, 1, 0, [{ id: "green", strength: 3 }], "green");
-            var poisonPlants = getPlantsInRandomPositions(NUMBER_OF_POISONOUS_PLANTS, 0, 1, [{ id: "red", strength: 3 }], "red");
-            var predators = getCreaturesInRandomPositions(NUMBER_OF_PREDATORS, 1, [{ id: PREY_SENSE_ID, strength: 2 }], "orange", 2, "predator");
-            var prey = getCreaturesInRandomPositions(NUMBER_OF_PREY, 10, [{ id: PREY_SENSE_ID, strength: 2 }], "black", 1, "prey");
+            canvas.addEventListener('click', function (e) {
+                var clickPosition = getCursorPosition(canvas, e);
+                var newPlant = new Plant(clickPosition.x, clickPosition.y, 5, [{ id: "green", strength: 3 }], 1, 0, "green");
+                items.push(newPlant);
+            });
+            for (var i = 0; i < 5; i++) {
+                var newPlants = getPlantsInRandomPositions(10, 1, 0, [{ id: "green", strength: 3 }], "green");
+                items = items.concat(newPlants);
+            }
+
+            var poisonPlants = getPlantsInRandomPositions(5, 0, 1, [{ id: "red", strength: 3 }], "red");
+            var predators = getCreaturesInRandomPositions(NUMBER_OF_PREDATORS, 1, [{ id: PREDATOR_SENSE_ID, strength: 2 }], "orange", 2, "predator");
+            var prey = getCreaturesInRandomPositions(NUMBER_OF_PREY, 50, [{ id: PREY_SENSE_ID, strength: 5 }], "black", 1, "prey");
             var creatures = predators.concat(prey);
-            items = items.concat(plants).concat(poisonPlants).concat(creatures);
+            items = items.concat(poisonPlants).concat(creatures);
 
 
             items = items.concat(creatures);
@@ -63,24 +72,39 @@
             }, 25);
         });
 
+        function getCursorPosition(canvas, event) {
+            const rect = canvas.getBoundingClientRect()
+            const x = event.clientX - rect.left;
+            const y = event.clientY - rect.top;
+            return { x, y };
+        }
+
         function clearCanvas() {
             context.clearRect(0, 0, canvas.width, canvas.height);
         }
 
         function getPlantsInRandomPositions(number, nutritionalValue, poisonValue, senseOutputs, colour) {
             var plants = [];
+            var lowerX = randomNumberBetween(0, canvas.width);
+            var lowerY = randomNumberBetween(0, canvas.height);
+            var upperX = randomNumberBetween(lowerX, canvas.width);
+            var upperY = randomNumberBetween(lowerY, canvas.height);
             for (var i = 0; i < number; i++) {
-                var plant = getPlantInRandomPosition(nutritionalValue, poisonValue, senseOutputs, colour);
+                var plant = getPlantInRandomPosition(nutritionalValue, poisonValue, senseOutputs, colour, lowerX, upperX, lowerY, upperY);
                 plants.push(plant);
             }
             return plants;
         }
 
-        function getPlantInRandomPosition(nutritionalValue, poisonValue, senseOutputs, colour) {
-            var x = Math.random() * canvas.width;
-            var y = Math.random() * canvas.height;
+        function getPlantInRandomPosition(nutritionalValue, poisonValue, senseOutputs, colour, lowerX = 0, upperX = canvas.width, lowerY = 0, upperY = canvas.height) {
+            var x = randomNumberBetween(lowerX, upperX);
+            var y = randomNumberBetween(lowerY, upperY);
 
             return new Plant(x, y, 5, senseOutputs, nutritionalValue, poisonValue, colour);
+        }
+
+        function randomNumberBetween(min, max) {
+            return Math.random() * (max - min + 1) + min;
         }
 
         function getCreaturesInRandomPositions(number, nutritionalValue, senseOutputs, colour, foodChainHeight, sensorClumpIdPrefix) {
