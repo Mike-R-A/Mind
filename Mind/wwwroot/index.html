@@ -19,16 +19,15 @@
             var plants = getPlantsInRandomPositions(NUMBER_OF_HEALTHY_PLANTS, 1, 0, [{ id: "green", strength: 3 }], "green");
             var poisonPlants = getPlantsInRandomPositions(NUMBER_OF_POISONOUS_PLANTS, 0, 1, [{ id: "red", strength: 3 }], "red");
             items = items.concat(plants).concat(poisonPlants);
-            //var creature1 = new Creature(10, 10, 8, [{ id: "blue", strength: 2 }], "creature1", "health", "damage", 2, "orange");
+            var creature1 = new Creature(10, 10, 8, [{ id: "blue", strength: 2 }], "creature1", "health", "damage", 2, "orange");
             var creature2 = new Creature(500, 500, 8, [{ id: "blue", strength: 2 }], "creature2", "health", "damage", 1);
-            var creatures = [creature2];
+            var creatures = [creature1, creature2];
 
             items = items.concat(creatures);
             for (var creature of creatures) {
                 await creature.createSensorClump();
             }
             setInterval(function () {
-                debugger;
                 clearCanvas();
                 console.log(items);
                 items.forEach(p => p.draw());
@@ -36,7 +35,7 @@
                     creature.timePeriodActions(items);
                 }
 
-            }, 25);
+            }, 100);
         });
 
         function clearCanvas() {
