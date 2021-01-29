@@ -6,22 +6,28 @@
     <title></title>
 </head>
 <body>
-    <canvas id="myCanvas" width="600" height="600"></canvas>
+    <canvas id="myCanvas" width="1000" height="1000"></canvas>
 
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
     <script>
         const NUMBER_OF_HEALTHY_PLANTS = 30;
         const NUMBER_OF_POISONOUS_PLANTS = 15;
+        const NUMBER_OF_PREDATORS = 5;
+        const NUMBER_OF_PREY = 10;
+        const WALL_SENSE_ID = "wall";
+        const PREDATOR_SENSE_ID = "predator";
+        const PREY_SENSE_ID = "prey";
         var canvas = document.getElementById("myCanvas");
         var context = canvas.getContext("2d");
         $(document).ready(async function () {
             var items = [];
             var plants = getPlantsInRandomPositions(NUMBER_OF_HEALTHY_PLANTS, 1, 0, [{ id: "green", strength: 3 }], "green");
             var poisonPlants = getPlantsInRandomPositions(NUMBER_OF_POISONOUS_PLANTS, 0, 1, [{ id: "red", strength: 3 }], "red");
-            items = items.concat(plants).concat(poisonPlants);
-            var creature1 = new Creature(10, 10, 8, [{ id: "blue", strength: 2 }], "creature1", "health", "damage", 2, "orange");
-            var creature2 = new Creature(500, 500, 8, [{ id: "blue", strength: 2 }], "creature2", "health", "damage", 1);
-            var creatures = [creature1, creature2];
+            var predators = getCreaturesInRandomPositions(NUMBER_OF_PREDATORS, 1, [{ id: PREY_SENSE_ID, strength: 2 }], "orange", 2, "predator");
+            var prey = getCreaturesInRandomPositions(NUMBER_OF_PREY, 10, [{ id: PREY_SENSE_ID, strength: 2 }], "black", 1, "prey");
+            var creatures = predators.concat(prey);
+            items = items.concat(plants).concat(poisonPlants).concat(creatures);
+
 
             items = items.concat(creatures);
             for (var creature of creatures) {
@@ -77,6 +83,22 @@
             return new Plant(x, y, 5, senseOutputs, nutritionalValue, poisonValue, colour);
         }
 
+        function getCreaturesInRandomPositions(number, nutritionalValue, senseOutputs, colour, foodChainHeight, sensorClumpIdPrefix) {
+            var predators = [];
+            for (var i = 0; i < number; i++) {
+                var predator = getCreatureInRandomPosition(sensorClumpIdPrefix + i, nutritionalValue, senseOutputs, colour, foodChainHeight);
+                predators.push(predator);
+            }
+            return predators;
+        }
+
+        function getCreatureInRandomPosition(sensorClumpId, nutritionalValue, senseOutputs, colour, foodChainHeight) {
+            var x = Math.random() * canvas.width;
+            var y = Math.random() * canvas.height;
+
+            return new Creature(x, y, 8, senseOutputs, sensorClumpId, "health", "damage", foodChainHeight, colour, nutritionalValue)
+        }
+
         function drawCircle(x, y, radius, colour) {
             context.beginPath();
             context.arc(x, y, radius, 0, 2 * Math.PI);
@@ -110,8 +132,8 @@
         }
 
         class Creature extends LivingThing {
-            constructor(x, y, radius, senseOutputs, sensorClumpId, desiredSenseId = "health", avoidSenseId = "damage", foodChainHeight = 0, colour = "purple") {
-                super(x, y, radius, senseOutputs, 1, 0, colour);
+            constructor(x, y, radius, senseOutputs, sensorClumpId, desiredSenseId = "health", avoidSenseId = "damage", foodChainHeight = 0, colour = "purple", nutritionalValue = 1) {
+                super(x, y, radius, senseOutputs, nutritionalValue, 0, colour);
                 this.sensorClumpId = sensorClumpId;
                 this.desiredSenseId = desiredSenseId;
                 this.avoidSenseId = avoidSenseId;
@@ -130,6 +152,7 @@
                     this.y + this.yVelocity < 0 ||
                     this.x + this.xVelocity > canvas.width ||
                     this.x + this.xVelocity < 0) {
+                    this.addSenseInput(this.avoidSenseId, 0.01);
                     this.changeDirection();
                 }
                 this.y += this.yVelocity;
@@ -138,8 +161,9 @@
 
             changeDirection() {
                 var angle = this.getRandomAngle();
-                var xVelocity = this.getX(angle);
-                var yVelocity = this.getY(angle);
+                var randomDistance = Math.round(Math.random());
+                var xVelocity = this.getX(angle, randomDistance);
+                var yVelocity = this.getY(angle, randomDistance);
 
                 this.xVelocity = xVelocity;
                 this.yVelocity = yVelocity;
@@ -161,7 +185,7 @@
                 return $.ajax({
                     url: `https://localhost:44360/mind/SensorClump/${this.sensorClumpId}`,
                     type: "POST",
-                    data: JSON.stringify(["red", "green", "blue", "health", "damage"]),
+                    data: JSON.stringify(["red", "green", PREY_SENSE_ID, PREDATOR_SENSE_ID, WALL_SENSE_ID, "health", "damage"]),
                     contentType: "application/json; charset=utf-8",
                     dataType: "json",
                     success: function (data) {
@@ -195,7 +219,7 @@
                                 if (item.poison > 0) {
                                     this.addSenseInput(this.avoidSenseId, item.poison);
                                 }
-                                if (item.type = "plant") {
+                                if (item.type == "plant") {
                                     items.splice(index, 1);
                                 } else if (item.addSenseInput) {
                                     item.addSenseInput(item.avoidSenseId, 1);
@@ -204,6 +228,14 @@
                         }
                     }
                 }
+                var distanceFromLeftWall = this.x;
+                var distanceFromRightWall = canvas.width - this.x;
+                var distanceFromTop = this.y;
+                var distanceFromBottom = canvas.height - this.y;
+                this.addSenseInput(WALL_SENSE_ID, 0.01 / Math.pow(distanceFromLeftWall, 2));
+                this.addSenseInput(WALL_SENSE_ID, 0.01 / Math.pow(distanceFromRightWall, 2));
+                this.addSenseInput(WALL_SENSE_ID, 0.01 / Math.pow(distanceFromTop, 2));
+                this.addSenseInput(WALL_SENSE_ID, 0.01 / Math.pow(distanceFromBottom, 2));
             }
         }
 
