@@ -30,26 +30,26 @@
             setInterval(function () {
                 var listToFire = [];
                 clearCanvas();
-                console.log(items);
                 items.forEach(p => p.draw());
                 for (var creature of creatures) {
-                    var detailsToFire = creature.timePeriodActions(items);
-                    listToFire.push(detailsToFire);
+                    creature.timePeriodActions(items);
+                }
+                for (var creature of creatures) {
+                    console.log("listToFire", creature.listToFire);
+                    listToFire = listToFire.concat(creature.listToFire);
+                    creature.listToFire = [];
                 }
                 fireList(listToFire).done(result => {
                     for (var item of items) {
                         if (item.sensorClumpId) {
                             var itemResult = result[item.sensorClumpId];
-                            console.log(itemResult, result);
                             if (itemResult != null && itemResult != undefined) {
-                                console.log("in the firelist");
                                 item.move(itemResult);
                                 item.lastHealthAssociation = itemResult;
                             }
                         }
                     }
                 });
-
             }, 25);
         });
 
@@ -115,6 +115,7 @@
                 this.changeDirection();
                 this.type = "creature";
                 this.foodChainHeight = foodChainHeight;
+                this.listToFire = [];
             }
 
             move(healthAssociation) {
@@ -160,7 +161,6 @@
                     contentType: "application/json; charset=utf-8",
                     dataType: "json",
                     success: function (data) {
-                        console.log("SUCCESS");
                     }
                 });
             }
@@ -195,13 +195,12 @@
                         }
                     }
                 }
-                return {
+                this.listToFire.push({
                     sensorClumpId: this.sensorClumpId,
                     senseInputs: senseInputs,
                     desiredSenseId: this.desiredSenseId,
                     avoidSenseId: this.avoidSenseId
-                };
-
+                });
             }
         }
 
