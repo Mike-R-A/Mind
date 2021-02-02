@@ -14,6 +14,8 @@
         const NUMBER_OF_POISONOUS_PLANTS = 15;
         const NUMBER_OF_PREDATORS = 5;
         const NUMBER_OF_PREY = 10;
+        const TIME_INTERVAL = 25;
+        const AGE_INCREMENT = TIME_INTERVAL / 1000;
         const WALL_SENSE_ID = "wall";
         const PREDATOR_SENSE_ID = "predator";
         const PREY_SENSE_ID = "prey";
@@ -42,7 +44,11 @@
             setInterval(function () {
                 var listToFire = [];
                 clearCanvas();
-                items.forEach(p => p.draw());
+                for (var item of items) {
+                    item.draw();
+                    item.age += AGE_INCREMENT;
+                }
+
                 var creatures = items.filter(i => i.type == "creature");
                 for (var creature of creatures) {
                     creature.timePeriodActions(items);
@@ -67,7 +73,7 @@
                         }
                     }
                 });
-            }, 25);
+            }, TIME_INTERVAL);
 
             setInterval(function () {
                 items = addNicePlants(items);
@@ -179,6 +185,7 @@
                 this.nutritionalValue = nutritionalValue;
                 this.poison = poison;
                 this.colour = colour;
+                this.age = 0;
             }
 
             draw() {
