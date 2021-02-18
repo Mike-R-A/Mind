@@ -13,11 +13,13 @@
         const NUMBER_OF_HEALTHY_PLANTS = 30;
         const NUMBER_OF_POISONOUS_PLANTS = 15;
         const NUMBER_OF_PREDATORS = 5;
+        const NUMBER_OF_APEX_PREDATORS = 5;
         const NUMBER_OF_PREY = 10;
         const TIME_INTERVAL = 25;
         const AGE_INCREMENT = TIME_INTERVAL / 1000;
         const WALL_SENSE_ID = "wall";
         const PREDATOR_SENSE_ID = "predator";
+        const APEX_PREDATOR_SENSE_ID = "apex";
         const PREY_SENSE_ID = "prey";
         const SPLIT_HEALTH = 500;
         var canvas = document.getElementById("myCanvas");
@@ -33,8 +35,9 @@
 
             items = addPrey(items);
             items = addPredators(items);
+            items = addApexPredators(items);
 
-            console.log("ITEMS",items);
+            console.log("ITEMS", items);
 
             var creatures = items.filter(i => i.type == "creature");
             for (var creature of creatures) {
@@ -54,7 +57,7 @@
                     if (creature.health >= SPLIT_HEALTH) {
                         console.log(items.length);
                         creature.radius = creature.radius / 2;
-                        var newSenseOutputs = [ ...creature.senseOutputs ];
+                        var newSenseOutputs = [...creature.senseOutputs];
                         var newCreature = new Creature(creature.x, creature.y, creature.radius, newSenseOutputs, creature.sensorClumpId + "split" + creature.offspring++,
                             creature.desiredSenseId, creature.avoidSenseId, creature.foodChainHeight, creature.colour, creature.nutritionalValue);
                         newCreature.createSensorClump().done(() => {
@@ -62,6 +65,7 @@
                             console.log("pushed", items.length);
                         });
                     }
+                    creature.health -= 0.01 * creature.foodChainHeight;
                 }
                 for (var creature of creatures) {
                     listToFire = listToFire.concat({
@@ -118,6 +122,11 @@
 
         function addPredators(items) {
             var predators = getCreaturesInRandomPositions(NUMBER_OF_PREDATORS, 1, [{ id: PREDATOR_SENSE_ID, strength: 2 }], "orange", 2, "predator");
+            return items.concat(predators);
+        }
+
+        function addApexPredators(items) {
+            var predators = getCreaturesInRandomPositions(NUMBER_OF_APEX_PREDATORS, 1, [{ id: APEX_PREDATOR_SENSE_ID, strength: 2 }], "pink", 3, "apex");
             return items.concat(predators);
         }
 
@@ -284,6 +293,10 @@
                 this.offspring = 0;
             }
 
+            canEat(foodChainHeight) {
+                return this.foodChainHeight > foodChainHeight;
+            }
+
             move(healthAssociation) {
                 if (healthAssociation < this.lastHealthAssociation) {
                     this.changeDirection();
@@ -329,7 +342,7 @@
                 return $.ajax({
                     url: `https://localhost:44360/mind/SensorClump/${this.sensorClumpId}`,
                     type: "POST",
-                    data: JSON.stringify(["red", "green", PREY_SENSE_ID, PREDATOR_SENSE_ID, WALL_SENSE_ID, "health", "damage"]),
+                    data: JSON.stringify(["red", "green", PREY_SENSE_ID, PREDATOR_SENSE_ID, APEX_PREDATOR_SENSE_ID, WALL_SENSE_ID, "health", "damage"]),
                     contentType: "application/json; charset=utf-8",
                     dataType: "json",
                     success: function (data) {
@@ -367,7 +380,7 @@
                         }
                         if (distanceBetween <= item.radius + this.radius) {
                             const index = items.indexOf(item);
-                            if (item.foodChainHeight < this.foodChainHeight) {
+                            if (this.canEat(item.foodChainHeight)) {
                                 if (item.nutritionalValue > 0) {
                                     this.addSenseInput(this.desiredSenseId, item.nutritionalValue);
                                     this.health += item.nutritionalValue;
