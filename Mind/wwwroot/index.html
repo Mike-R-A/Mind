@@ -74,25 +74,30 @@
                     }
                 });
             }, TIME_INTERVAL);
-
+            items = addNicePlants(items);
             setInterval(function () {
                 items = addNicePlants(items);
-            }, 10000);
-
+            }, 1000);
+            items = addPoisonPlants(items);
             setInterval(function () {
                 items = addPoisonPlants(items);
             }, 62000);
+
+            setInterval(function () {
+                var plants = items.filter(i => i.type == "plant");
+                plants.forEach(p => p.health += 1);
+            }, 1000);
         });
 
         function addNicePlants(items) {
-            var random = Math.round(randomNumberBetween(1, 10));
+            var random = Math.round(randomNumberBetween(1, 2));
             var nicePlants = getGroupsOfPlants(1, random, 1, 0, [{ id: "green", strength: 3 }], "green");
             return items.concat(nicePlants);
         }
 
         function addPoisonPlants(items) {
             var random = Math.round(randomNumberBetween(1, 3));
-            var poisonPlants = getGroupsOfPlants(1, random, 0, 1, [{ id: "red", strength: 3 }], "red");
+            var poisonPlants = getGroupsOfPlants(1, random, 0, 10, [{ id: "red", strength: 3 }], "red");
             return items.concat(poisonPlants);
         }
 
@@ -144,7 +149,7 @@
             var x = randomNumberBetween(lowerX, upperX);
             var y = randomNumberBetween(lowerY, upperY);
 
-            return new Plant(x, y, 5, senseOutputs, nutritionalValue, poisonValue, colour);
+            return new Plant(x, y, 0.1, senseOutputs, nutritionalValue, poisonValue, colour);
         }
 
         function randomNumberBetween(min, max) {
@@ -332,28 +337,28 @@
                         var distanceBetween = distanceBetweenTwoItems(item, this);
                         for (var senseOutput of item.senseOutputs) {
                             var senseStrength = senseOutput.strength / (Math.pow(distanceBetween, 2) + 1);
+                            if (item.health) {
+                                senseStrength = senseStrength * item.health;
+                            }
                             this.addSenseInput(senseOutput.id, senseStrength);
                         }
                         if (distanceBetween <= item.radius + this.radius) {
                             const index = items.indexOf(item);
                             if (item.foodChainHeight < this.foodChainHeight) {
-                                var itemNutrition = item.nutritionalValue * item.health / 10;
-                                if (itemNutrition > 0) {
-                                    this.addSenseInput(this.desiredSenseId, itemNutrition);
-                                    this.health += itemNutrition;
+                                if (item.nutritionalValue > 0) {
+                                    this.addSenseInput(this.desiredSenseId, item.nutritionalValue);
+                                    this.health += item.nutritionalValue;
                                 }
                                 if (item.poison > 0) {
                                     this.addSenseInput(this.avoidSenseId, item.poison);
                                     this.health -= item.poison;
                                 }
-                                if (item.type == "plant") {
-                                    items.splice(index, 1);
-                                } else if (item.addSenseInput) {
+                                if (item.addSenseInput) {
                                     item.addSenseInput(item.avoidSenseId, 1);
-                                    item.health = item.health - itemNutrition;
-                                    if (item.health <= 0) {
-                                        items.splice(index, 1);
-                                    }
+                                }
+                                item.health = item.health - item.nutritionalValue - item.poison;
+                                if (item.health <= 0) {
+                                    items.splice(index, 1);
                                 }
                             }
                             if (item.type == this.type) {

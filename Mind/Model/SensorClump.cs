@@ -10,7 +10,7 @@ namespace Mind.Model
         string Id { get; set; }
         List<Sensor> Sensors { get; set; }
         Dictionary<string, Sensor> SensorDictionary { get; }
-        double GetExpectedHappiness(List<SenseInput> senseInputs, string desiredSenseId, string avoidSenseId);
+        double GetExpectedHappiness(List<SenseInput> senseInputs, string desiredSenseId, string avoidSenseId, bool useSecondaryAssociation = false);
     }
     public class SensorClump : ISensorClump
     {
@@ -52,14 +52,34 @@ namespace Mind.Model
             }
         }
 
-        public double GetExpectedHappiness(List<SenseInput> senseInputs, string desiredSenseId, string avoidSenseId)
+        public double GetExpectedHappiness(List<SenseInput> senseInputs, string desiredSenseId, string avoidSenseId, bool useSecondaryAssociation = false)
         {
             var desiredAssociationFactor = GetAssociationStrengthFactor(senseInputs, desiredSenseId);
+
+            var secondaryDesiredAssociationFactor = useSecondaryAssociation ? GetSecondaryAssociation(senseInputs, desiredSenseId) : 0;
+
             var avoidAssociationFactor = GetAssociationStrengthFactor(senseInputs, avoidSenseId);
 
-            var associationFactor = desiredAssociationFactor - avoidAssociationFactor;
+            var secondaryAvoidAssociationFactor = useSecondaryAssociation ? GetSecondaryAssociation(senseInputs, avoidSenseId) : 0;
+
+            var associationFactor = desiredAssociationFactor + secondaryDesiredAssociationFactor - avoidAssociationFactor - secondaryAvoidAssociationFactor;
 
             return associationFactor;
+        }
+
+        private double GetSecondaryAssociation(List<SenseInput> senseInputs, string desiredSenseId)
+        {
+            double secondaryDesiredAssociationFactor = 0;
+
+            var otherSenseInputs = senseInputs.Where(s => s.SenseId != desiredSenseId);
+
+            foreach (var senseInput in otherSenseInputs)
+            {
+                secondaryDesiredAssociationFactor += Math.Sqrt(GetAssociationStrengthFactor(senseInputs, senseInput.SenseId) *
+                    GetAssociationBetweenInputAndDesired(desiredSenseId, senseInput));
+            }
+
+            return secondaryDesiredAssociationFactor / (otherSenseInputs.Count() * 2);
         }
 
         private double GetAssociationStrengthFactor(List<SenseInput> senseInputs, string senseId)
@@ -67,14 +87,21 @@ namespace Mind.Model
             double totalAssociation = 0;
             foreach (var senseInput in senseInputs.Where(s => s.SenseId != senseId))
             {
-                var inputSensor = Sensors.Single(s => s.Id == senseInput.SenseId);
-                var associationToDesired = inputSensor.Connections.Single(c => c.PrimarySensor.Id == inputSensor.Id && c.SecondarySensor.Id == senseId).Association;
+                double associationToDesired = GetAssociationBetweenInputAndDesired(senseId, senseInput);
 
                 totalAssociation += associationToDesired * senseInput.Strength;
             }
             GetSelfAssociationFactor(senseInputs, senseId);
 
             return totalAssociation;
+        }
+
+        private double GetAssociationBetweenInputAndDesired(string senseId, SenseInput senseInput)
+        {
+            var inputSensor = Sensors.Single(s => s.Id == senseInput.SenseId);
+            var associationToDesired =
+                inputSensor.Connections.Single(c => c.PrimarySensor.Id == inputSensor.Id && c.SecondarySensor.Id == senseId).Association;
+            return associationToDesired;
         }
 
         private double GetSelfAssociationFactor(List<SenseInput> senseInputs, string senseId)
