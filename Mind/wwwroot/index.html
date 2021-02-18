@@ -97,7 +97,7 @@
         }
 
         function addPrey(items) {
-            var prey = getCreaturesInRandomPositions(NUMBER_OF_PREY, 50, [{ id: PREY_SENSE_ID, strength: 5 }], "black", 1, "prey");
+            var prey = getCreaturesInRandomPositions(NUMBER_OF_PREY, 2, [{ id: PREY_SENSE_ID, strength: 5 }], "black", 1, "prey");
             return items.concat(prey);
         }
 
@@ -192,6 +192,24 @@
                 drawCircle(this.x, this.y, this.radius, this.colour)
             }
 
+            get radius() {
+                return this._radius;
+            }
+
+            set radius(r) {
+                this._radius = r;
+                this._area = Math.PI * Math.pow(r, 2);
+            }
+
+            get area() {
+                return this._area;
+            }
+
+            set area(a) {
+                this._area = a;
+                this._radius = Math.sqrt(a / Math.PI);
+            }
+
             get distanceFromLeftWall() {
                 return this.x;
             }
@@ -213,6 +231,15 @@
             constructor(x, y, radius, senseOutputs, nutritionalValue = 1, poison = 0, colour = "pink", foodChainHeight = 0) {
                 super(x, y, radius, senseOutputs, nutritionalValue, poison, colour);
                 this.foodChainHeight = foodChainHeight;
+                this.health = this.area;
+            }
+
+            get health() {
+                return this.area;
+            }
+
+            set health(h) {
+                this.area = h;
             }
         }
 
@@ -223,7 +250,6 @@
                 this.desiredSenseId = desiredSenseId;
                 this.avoidSenseId = avoidSenseId;
                 this.lastHealthAssociation = 0;
-                this.health = 100;
                 this.setNewVelocity();
                 this.type = "creature";
                 this.foodChainHeight = foodChainHeight;
@@ -311,9 +337,10 @@
                         if (distanceBetween <= item.radius + this.radius) {
                             const index = items.indexOf(item);
                             if (item.foodChainHeight < this.foodChainHeight) {
-                                if (item.nutritionalValue > 0) {
-                                    this.addSenseInput(this.desiredSenseId, item.nutritionalValue);
-                                    this.health += item.nutritionalValue;
+                                var itemNutrition = item.nutritionalValue * item.health / 10;
+                                if (itemNutrition > 0) {
+                                    this.addSenseInput(this.desiredSenseId, itemNutrition);
+                                    this.health += itemNutrition;
                                 }
                                 if (item.poison > 0) {
                                     this.addSenseInput(this.avoidSenseId, item.poison);
@@ -323,8 +350,7 @@
                                     items.splice(index, 1);
                                 } else if (item.addSenseInput) {
                                     item.addSenseInput(item.avoidSenseId, 1);
-                                    var gettingBittenHealthDecrease = 1;
-                                    item.health = item.health - gettingBittenHealthDecrease;
+                                    item.health = item.health - itemNutrition;
                                     if (item.health <= 0) {
                                         items.splice(index, 1);
                                     }
