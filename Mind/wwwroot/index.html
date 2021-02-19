@@ -6,7 +6,7 @@
     <title></title>
 </head>
 <body>
-    <canvas id="myCanvas" width="1500" height="800"></canvas>
+    <canvas id="myCanvas" width="2000" height="1000"></canvas>
 
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
     <script>
@@ -21,6 +21,9 @@
         const PREDATOR_SENSE_ID = "predator";
         const APEX_PREDATOR_SENSE_ID = "apex";
         const PREY_SENSE_ID = "prey";
+        const LANDSCAPE_ITEM1_SENSE_ID = "landscapeItem1";
+        const LANDSCAPE_ITEM2_SENSE_ID = "landscapeItem2";
+        const LANDSCAPE_ITEM3_SENSE_ID = "landscapeItem3";
         const SPLIT_HEALTH = 500;
         var canvas = document.getElementById("myCanvas");
         var context = canvas.getContext("2d");
@@ -32,6 +35,12 @@
                 items.push(newPlant);
             });
 
+            var item1 = new Item(100, 100, 50, [{ id: LANDSCAPE_ITEM1_SENSE_ID, strength: 10 }], 0, 0, "blue");
+            var item2 = new Item(canvas.width - 100, 100, 50, [{ id: LANDSCAPE_ITEM2_SENSE_ID, strength: 10 }], 0, 0, "cyan");
+            var item3 = new Item(300, canvas.height - 300, 50, [{ id: LANDSCAPE_ITEM3_SENSE_ID, strength: 10 }], 0, 0, "darkgreen");
+            items.push(item1);
+            items.push(item2);
+            items.push(item3);
 
             items = addPrey(items);
             items = addPredators(items);
@@ -342,7 +351,8 @@
                 return $.ajax({
                     url: `https://localhost:44360/mind/SensorClump/${this.sensorClumpId}`,
                     type: "POST",
-                    data: JSON.stringify(["red", "green", PREY_SENSE_ID, PREDATOR_SENSE_ID, APEX_PREDATOR_SENSE_ID, WALL_SENSE_ID, "health", "damage"]),
+                    data: JSON.stringify(["red", "green", PREY_SENSE_ID, PREDATOR_SENSE_ID, APEX_PREDATOR_SENSE_ID, WALL_SENSE_ID, LANDSCAPE_ITEM1_SENSE_ID,
+                        LANDSCAPE_ITEM2_SENSE_ID, LANDSCAPE_ITEM3_SENSE_ID, "health", "damage"]),
                     contentType: "application/json; charset=utf-8",
                     dataType: "json",
                     success: function (data) {

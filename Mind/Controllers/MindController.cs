@@ -41,7 +41,7 @@ namespace Mind.Controllers
         [HttpPost("FireMultiple/{sensorClumpId}")]
         public double FireMultiple(string sensorClumpId, [FromBody] List<SenseInput> senseInputs, [FromQuery] string desiredSenseId, [FromQuery] string avoidSenseId)
         {
-            var sensorClump = persistenceService.SensorClumps.Single(s => s.Id == sensorClumpId);
+            var sensorClump = persistenceService.SensorClumps.ToList().Single(s => s.Id == sensorClumpId);
             Helper.Shuffle(senseInputs);
             senseInputs.ForEach(i => sensorClump.Sensors.Single(s => s.Id == i.SenseId).Fire(i.Strength));
 
