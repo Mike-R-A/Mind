@@ -46,8 +46,6 @@
             items = addPredators(items);
             items = addApexPredators(items);
 
-            console.log("ITEMS", items);
-
             var itemsWithSensorClump = items.filter(i => i.sensorClumpId);
             for (var item of itemsWithSensorClump) {
                 await item.createSensorClump();
@@ -57,23 +55,11 @@
                 clearCanvas();
                 for (var item of items) {
                     item.draw();
-                    item.age += AGE_INCREMENT;
                 }
 
-                var itemsWithTimePeriodActions = items.filter(i => i.timePeriodActions);
-                for (var item of itemsWithTimePeriodActions) {
+                for (var item of items) {
                     item.timePeriodActions(items);
-                    if (item.health >= SPLIT_HEALTH) {
-                        console.log(items.length);
-                        item.radius = item.radius / 2;
-                        var newSenseOutputs = [...item.senseOutputs];
-                        var newCreature = new Creature(item.x, item.y, item.radius, newSenseOutputs, item.sensorClumpId + "split" + item.offspring++,
-                            item.desiredSenseId, item.avoidSenseId, item.foodChainHeight, item.colour, item.nutritionalValue);
-                        newCreature.createSensorClump().done(() => {
-                            items.push(newCreature);
-                            console.log("pushed", items.length);
-                        });
-                    }
+                    
                     item.health -= 0.01 * item.foodChainHeight;
                 }
                 var itemsWithSensorClump = items.filter(i => i.sensorClumpId);
@@ -271,6 +257,11 @@
             get distanceFromBottomWall() {
                 return canvas.height - this.y;
             }
+
+            timePeriodActions() {
+                this.age += AGE_INCREMENT;
+                console.log(this.age);
+            }
         }
 
         class LivingThing extends Item {
@@ -378,7 +369,17 @@
                 this.addSenseInput(WALL_SENSE_ID, wallSmellStrength / Math.pow(this.distanceFromBottomWall, 2));
             }
 
+            async giveBirth() {
+                this.radius = this.radius / 2;
+                var newSenseOutputs = [...this.senseOutputs];
+                var newCreature = new Creature(this.x, this.y, this.radius, newSenseOutputs, this.sensorClumpId + "split" + this.offspring++,
+                    this.desiredSenseId, this.avoidSenseId, this.foodChainHeight, this.colour, this.nutritionalValue);
+                await newCreature.createSensorClump();
+                return newCreature;
+            }
+
             timePeriodActions(items) {
+                super.timePeriodActions();
                 for (var item of items) {
                     if (item != this) {
                         var distanceBetween = distanceBetweenTwoItems(item, this);
@@ -414,7 +415,11 @@
                         }
                     }
                 }
-
+                if (this.health >= SPLIT_HEALTH) {
+                    this.giveBirth().then(newItem => {
+                        items.push(newItem);
+                    });
+                }
                 this.addWallSenseInputs();
             }
         }
