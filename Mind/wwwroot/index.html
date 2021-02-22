@@ -54,23 +54,15 @@
                 var listToFire = [];
                 clearCanvas();
                 for (var item of items) {
+                    item.timePeriodActions(items);
+                }
+                for (var item of items) {
                     item.draw();
                 }
 
-                for (var item of items) {
-                    item.timePeriodActions(items);
-                    
-                    item.health -= 0.01 * item.foodChainHeight;
-                }
                 var itemsWithSensorClump = items.filter(i => i.sensorClumpId);
                 for (var item of itemsWithSensorClump) {
-                    listToFire = listToFire.concat({
-                        sensorClumpId: item.sensorClumpId,
-                        senseInputs: item.senseInputs,
-                        desiredSenseId: item.desiredSenseId,
-                        avoidSenseId: item.avoidSenseId
-                    });
-                    item.senseInputs = [];
+                    listToFire = listToFire.concat(item.senseInputInfo);
                 }
                 fireList(listToFire).done(result => {
                     for (var item of items) {
@@ -260,7 +252,6 @@
 
             timePeriodActions() {
                 this.age += AGE_INCREMENT;
-                console.log(this.age);
             }
         }
 
@@ -278,6 +269,11 @@
             set health(h) {
                 this.area = h;
             }
+
+            timePeriodActions() {
+                super.timePeriodActions();
+                this.health -= 0.01 * this.foodChainHeight;
+            }
         }
 
         class Creature extends LivingThing {
@@ -292,6 +288,17 @@
                 this.foodChainHeight = foodChainHeight;
                 this.senseInputs = [];
                 this.offspring = 0;
+            }
+
+            get senseInputInfo() {
+                var senseInputs = this.senseInputs;
+                this.senseInputs = [];
+                return {
+                    sensorClumpId: this.sensorClumpId,
+                    senseInputs: senseInputs,
+                    desiredSenseId: this.desiredSenseId,
+                    avoidSenseId: this.avoidSenseId
+                };
             }
 
             canEat(foodChainHeight) {
