@@ -41,13 +41,17 @@ namespace Mind.Controllers
         [HttpPost("FireMultiple/{sensorClumpId}")]
         public double FireMultiple(string sensorClumpId, [FromBody] List<SenseInput> senseInputs, [FromQuery] string desiredSenseId, [FromQuery] string avoidSenseId)
         {
-            var sensorClump = persistenceService.SensorClumps.ToList().Single(s => s.Id == sensorClumpId);
-            Helper.Shuffle(senseInputs);
-            senseInputs.ForEach(i => sensorClump.Sensors.Single(s => s.Id == i.SenseId).Fire(i.Strength));
+            var persistedSensorClumps = persistenceService.SensorClumps;
+            lock (persistedSensorClumps)
+            {
+                var sensorClump = persistedSensorClumps.ToList().Single(s => s.Id == sensorClumpId);
+                Helper.Shuffle(senseInputs);
+                senseInputs.ForEach(i => sensorClump.Sensors.Single(s => s.Id == i.SenseId).Fire(i.Strength));
 
-            var expected = sensorClump.GetExpectedHappiness(senseInputs, desiredSenseId, avoidSenseId);
+                var expected = sensorClump.GetExpectedHappiness(senseInputs, desiredSenseId, avoidSenseId);
 
-            return expected;
+                return expected;
+            }
         }
 
         [HttpPost("FireList")]

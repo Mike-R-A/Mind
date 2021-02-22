@@ -12,9 +12,9 @@
     <script>
         const NUMBER_OF_HEALTHY_PLANTS = 30;
         const NUMBER_OF_POISONOUS_PLANTS = 15;
-        const NUMBER_OF_PREDATORS = 10;
-        const NUMBER_OF_APEX_PREDATORS = 5;
-        const NUMBER_OF_PREY = 20;
+        const NUMBER_OF_PREDATORS = 1;
+        const NUMBER_OF_APEX_PREDATORS = 1;
+        const NUMBER_OF_PREY = 1;
         const TIME_INTERVAL = 25;
         const AGE_INCREMENT = TIME_INTERVAL / 1000;
         const WALL_SENSE_ID = "wall";
@@ -48,9 +48,9 @@
 
             console.log("ITEMS", items);
 
-            var creatures = items.filter(i => i.type == "creature");
-            for (var creature of creatures) {
-                await creature.createSensorClump();
+            var itemsWithSensorClump = items.filter(i => i.sensorClumpId);
+            for (var item of itemsWithSensorClump) {
+                await item.createSensorClump();
             }
             setInterval(function () {
                 var listToFire = [];
@@ -60,30 +60,31 @@
                     item.age += AGE_INCREMENT;
                 }
 
-                var creatures = items.filter(i => i.type == "creature");
-                for (var creature of creatures) {
-                    creature.timePeriodActions(items);
-                    if (creature.health >= SPLIT_HEALTH) {
+                var itemsWithTimePeriodActions = items.filter(i => i.timePeriodActions);
+                for (var item of itemsWithTimePeriodActions) {
+                    item.timePeriodActions(items);
+                    if (item.health >= SPLIT_HEALTH) {
                         console.log(items.length);
-                        creature.radius = creature.radius / 2;
-                        var newSenseOutputs = [...creature.senseOutputs];
-                        var newCreature = new Creature(creature.x, creature.y, creature.radius, newSenseOutputs, creature.sensorClumpId + "split" + creature.offspring++,
-                            creature.desiredSenseId, creature.avoidSenseId, creature.foodChainHeight, creature.colour, creature.nutritionalValue);
+                        item.radius = item.radius / 2;
+                        var newSenseOutputs = [...item.senseOutputs];
+                        var newCreature = new Creature(item.x, item.y, item.radius, newSenseOutputs, item.sensorClumpId + "split" + item.offspring++,
+                            item.desiredSenseId, item.avoidSenseId, item.foodChainHeight, item.colour, item.nutritionalValue);
                         newCreature.createSensorClump().done(() => {
                             items.push(newCreature);
                             console.log("pushed", items.length);
                         });
                     }
-                    creature.health -= 0.01 * creature.foodChainHeight;
+                    item.health -= 0.01 * item.foodChainHeight;
                 }
-                for (var creature of creatures) {
+                var itemsWithSensorClump = items.filter(i => i.sensorClumpId);
+                for (var item of itemsWithSensorClump) {
                     listToFire = listToFire.concat({
-                        sensorClumpId: creature.sensorClumpId,
-                        senseInputs: creature.senseInputs,
-                        desiredSenseId: creature.desiredSenseId,
-                        avoidSenseId: creature.avoidSenseId
+                        sensorClumpId: item.sensorClumpId,
+                        senseInputs: item.senseInputs,
+                        desiredSenseId: item.desiredSenseId,
+                        avoidSenseId: item.avoidSenseId
                     });
-                    creature.senseInputs = [];
+                    item.senseInputs = [];
                 }
                 fireList(listToFire).done(result => {
                     for (var item of items) {
@@ -100,7 +101,7 @@
             items = addNicePlants(items);
             setInterval(function () {
                 items = addNicePlants(items);
-            }, 3000);
+            }, 10000);
             items = addPoisonPlants(items);
             setInterval(function () {
                 items = addPoisonPlants(items);
@@ -325,7 +326,7 @@
                 this.setNewVelocity();
             }
 
-            setNewVelocity(speed = 2) {
+            setNewVelocity(speed = 1) {
                 var angle = this.getRandomAngle();
                 var randomDistance = Math.round(Math.random()) * speed;
                 var xVelocity = this.getX(angle, randomDistance);
